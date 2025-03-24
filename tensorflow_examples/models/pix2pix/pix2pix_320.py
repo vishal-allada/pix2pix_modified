@@ -25,6 +25,7 @@ from absl import app
 from absl import flags
 
 import tensorflow as tf
+from tensorflow.keras.layers import Layer
 
 FLAGS = flags.FLAGS
 
@@ -295,7 +296,12 @@ def upsample(filters, size, norm_type='batchnorm', apply_dropout=False):
 
 #     return result
 
-
+class CropToMatch(Layer):
+    def call(self, inputs):
+        x, skip = inputs
+        h = tf.shape(x)[1]
+        w = tf.shape(x)[2]
+        return tf.image.resize_with_crop_or_pad(skip, h, w)
 
 def unet_generator(output_channels, norm_type='batchnorm'):
   """Modified u-net generator model (https://arxiv.org/abs/1611.07004).
@@ -353,8 +359,7 @@ def unet_generator(output_channels, norm_type='batchnorm'):
     x = up(x)
 
     # Ensure spatial dimensions match before concatenation
-    x_shape = tf.shape(x)
-    skip = tf.image.resize_with_crop_or_pad(skip, x_shape[1], x_shape[2])
+    skip = CropToMatch()([x, skip])
 
     x = concat([x, skip])
 
